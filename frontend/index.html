@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kanban Project Management</title>
-    <script src="https://cdn.tailwindcss.com "></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css ">
+    <title>Kanban Project Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .kanban-column {
-            min-height: 300px;
+            min-height: 70vh;
             transition: all 0.3s ease;
         }
         .kanban-column:hover {
             transform: translateY(-5px);
         }
         .task-card {
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             cursor: grab;
         }
         .task-card:hover {
@@ -24,13 +24,6 @@
         }
         .task-card:active {
             cursor: grabbing;
-        }
-        .dropzone {
-            transition: background-color 0.3s ease;
-        }
-        .dropzone.active {
-            background-color: rgba(59, 130, 246, 0.1);
-            border: 2px dashed #3b82f6;
         }
         .priority-high {
             border-left: 4px solid #ef4444;
@@ -41,605 +34,1254 @@
         .priority-low {
             border-left: 4px solid #10b981;
         }
+        .dropzone {
+            min-height: 100px;
+            transition: background-color 0.3s;
+        }
+        .dropzone.dragover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
         .modal {
             transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        .modal.hidden {
             opacity: 0;
             transform: translateY(-20px);
             pointer-events: none;
         }
+        .modal.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+        .status-backlog {
+          border-left: 4px solid #9CA3AF;
+        }
+
+        .status-todo {
+          border-left: 4px solid #3B82F6;
+        }
+
+        .status-inprogress {
+          border-left: 4px solid #FBBF24;
+        }
+
+        .status-done {
+          border-left: 4px solid #10B981;
+        }
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+        .animate-bounce {
+          animation: bounce 1.5s infinite;
+        }
+
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-50 font-sans">
 
-<!-- Header -->
-<header class="bg-indigo-600 text-white shadow-lg">
-    <div class="container mx-auto px-4 py-6">
-        <div class="flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <i class="fas fa-project-diagram text-3xl"></i>
-                <h1 class="text-2xl font-bold">Kanban Project Manager</h1>
-            </div>
-            <div class="flex items-center space-x-4">
-                <!-- Новая кнопка "Новый проект" -->
-                <button id="newProjectBtn" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition">
-                    <i class="fas fa-plus mr-2"></i>Новый проект
-                </button>
-
-                <button id="openRegistrationBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition">
-                    <i class="fas fa-user-plus mr-2"></i>Регистрация
-                </button>
-                <button id="openLoginBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition">
-                    <i class="fas fa-sign-in-alt mr-2"></i>Войти
-                </button>
-                <div class="relative hidden">
-                    <img src="https://randomuser.me/api/portraits/women/44.jpg " alt="Profile" class="w-10 h-10 rounded-full cursor-pointer border-2 border-white">
-                    <div class="absolute -top-1 -right-1 bg-green-500 w-3 h-3 rounded-full border border-white"></div>
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-project-diagram text-3xl"></i>
+                    <h1 class="text-2xl font-bold">Kanban Project Manager</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="newProjectBlock" class="hidden">
+                        <button id="newProjectBtn" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition">
+                            <i class="fas fa-plus mr-2"></i>Новый проект
+                        </button>
+                    </div>
+                    <div id="authButtons" class="flex items-center space-x-2">
+                        <button id="loginBtn" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition">Войти</button>
+                        <button id="registerBtn" class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition">Регистрация</button>
+                    </div>
+                    <div id="avatarBlock" class="relative hidden">
+                        <div id="userAvatar" class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm cursor-pointer border-2 border-white"></div>
+                        <div id="avatarDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden">
+                            <a href="#" id="profileBtn" class="block px-4 py-2 text-gray-800 hover:bg-indigo-100">Профиль</a>
+                            <a href="#" id="settingsBtn" class="block px-4 py-2 text-gray-800 hover:bg-indigo-100">Настройки</a>
+                            <a href="#" id="logoutBtn" class="block px-4 py-2 text-gray-800 hover:bg-red-100">Выйти</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+    </header>
+
+    <!-- Подсказка при первом входе -->
+    <div id="onboardingHint" class="hidden absolute top-[90px] right-[80px] z-50 flex items-center space-x-2 animate-bounce">
+      <div class="bg-white border border-indigo-300 rounded-xl shadow-lg px-4 py-2 text-indigo-700 font-medium">
+        Нажми здесь, чтобы создать первый проект!
+      </div>
+      <svg width="70" height="70" viewBox="0 0 100 100">
+        <defs>
+          <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#3B82F6"/>
+          </marker>
+        </defs>
+        <path d="M10,50 Q70,30 15,10" stroke="#3B82F6" stroke-width="5" fill="none" marker-end="url(#arrow)" />
+      </svg>
     </div>
-</header>
 
-<!-- Main Content -->
-<main class="container mx-auto px-4 py-8">
-    <!-- Kanban Board -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Backlog Column -->
-        <div class="kanban-column dropzone bg-gray-50 rounded-xl p-4" data-status="backlog">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-lg text-gray-700">Бэклог</h3>
-                <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">0 задач</span>
-            </div>
-            <div class="space-y-4" id="backlog-tasks"></div>
-            <button class="add-task-btn mt-4 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-600 font-medium transition flex items-center justify-center">
-                <i class="fas fa-plus mr-2"></i> Добавить задачу
-            </button>
-        </div>
+    <!-- Приветственный раздел -->
+    <div id="welcomeSection" class="hidden flex flex-col items-center justify-center min-h-[calc(100vh-96px)] text-center px-4">
+        <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Добро пожаловать в Kanban Project Manager</h2>
+        <p class="text-gray-600 text-lg max-w-2xl mx-auto">
+            Планируй, организуй и отслеживай задачи своей команды с помощью удобной канбан-доски.
+            Создай проект — и начни управлять прямо сейчас!
+        </p>
+    </div>     
 
-        <!-- To Do Column -->
-        <div class="kanban-column dropzone bg-gray-50 rounded-xl p-4" data-status="todo">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-lg text-gray-700">К выполнению</h3>
-                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">0 задач</span>
-            </div>
-            <div class="space-y-4" id="todo-tasks"></div>
-            <button class="add-task-btn mt-4 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-600 font-medium transition flex items-center justify-center">
-                <i class="fas fa-plus mr-2"></i> Добавить задачу
-            </button>
-        </div>
+    <!-- Projects -->
+    <div id="projectList" class="container mx-auto px-4 py-6 space-y-6"></div>
 
-        <!-- In Progress Column -->
-        <div class="kanban-column dropzone bg-gray-50 rounded-xl p-4" data-status="progress">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-lg text-gray-700">В работе</h3>
-                <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">0 задач</span>
-            </div>
-            <div class="space-y-4" id="progress-tasks"></div>
-            <button class="add-task-btn mt-4 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-600 font-medium transition flex items-center justify-center">
-                <i class="fas fa-plus mr-2"></i> Добавить задачу
-            </button>
-        </div>
-
-        <!-- Done Column -->
-        <div class="kanban-column dropzone bg-gray-50 rounded-xl p-4" data-status="done">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-bold text-lg text-gray-700">Выполнено</h3>
-                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">0 задач</span>
-            </div>
-            <div class="space-y-4" id="done-tasks"></div>
-            <button class="add-task-btn mt-4 w-full py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-600 font-medium transition flex items-center justify-center">
-                <i class="fas fa-plus mr-2"></i> Добавить задачу
-            </button>
-        </div>
-    </div>
-</main>
-
-<!-- New Task Modal -->
-<div id="taskModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl w-full max-w-md p-6 mx-4">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800">Новая задача</h3>
-            <button id="closeTaskModalBtn" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="taskForm">
-            <div class="space-y-4">
-                <div>
-                    <label for="taskTitle" class="block text-sm font-medium text-gray-700 mb-1">Название задачи</label>
-                    <input type="text" id="taskTitle" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="taskDescription" class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
-                    <textarea id="taskDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                </div>
-                <div>
-                    <label for="taskPriority" class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
-                    <select id="taskPriority" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="low">Низкий</option>
-                        <option value="medium" selected>Средний</option>
-                        <option value="high">Высокий</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="taskAssignee" class="block text-sm font-medium text-gray-700 mb-1">Имя исполнителя</label>
-                    <input type="text" id="taskAssignee" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Введите имя исполнителя">
-                </div>
-                <div>
-                    <label for="taskDueDate" class="block text-sm font-medium text-gray-700 mb-1">Срок выполнения</label>
-                    <input type="date" id="taskDueDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                </div>
-                <div>
-                    <label for="taskStatus" class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
-                    <select id="taskStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="backlog">Бэклог</option>
-                        <option value="todo">К выполнению</option>
-                        <option value="progress">В работе</option>
-                        <option value="done">Выполнено</option>
-                    </select>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" id="cancelTaskBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">Отмена</button>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">Создать задачу</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- New Project Modal -->
-<div id="projectModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl w-full max-w-md p-6 mx-4">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800">Новый проект</h3>
-            <button id="closeProjectModalBtn" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="projectForm">
-            <div class="space-y-4">
-                <div>
-                    <label for="projectName" class="block text-sm font-medium text-gray-700 mb-1">Название проекта</label>
-                    <input type="text" id="projectName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="projectDescription" class="block text-sm font-medium text-gray-700 mb-1">Описание проекта</label>
-                    <textarea id="projectDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" id="cancelProjectBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">Отмена</button>
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">Создать проект</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Registration Modal -->
-<div id="registrationModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl w-full max-w-md p-6 mx-4">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800">Регистрация</h3>
-            <button id="closeRegistrationModalBtn" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="registrationForm">
-            <div class="space-y-4">
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Имя пользователя</label>
-                    <input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
-                    <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" id="cancelRegistrationBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">Отмена</button>
-                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition">Зарегистрироваться</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Login Modal -->
-<div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-xl w-full max-w-md p-6 mx-4">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800">Авторизация</h3>
-            <button id="closeLoginModalBtn" class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <form id="loginForm">
-            <div class="space-y-4">
-                <div>
-                    <label for="loginUsername" class="block text-sm font-medium text-gray-700 mb-1">Имя пользователя</label>
-                    <input type="text" id="loginUsername" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-                <div>
-                    <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
-                    <input type="password" id="loginPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" id="cancelLoginBtn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">Отмена</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Войти</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    // DOM Elements
-    const taskModal = document.getElementById('taskModal');
-    const projectModal = document.getElementById('projectModal');
-    const registrationModal = document.getElementById('registrationModal');
-    const loginModal = document.getElementById('loginModal');
-    const newProjectBtn = document.getElementById('newProjectBtn');
-
-    const closeModalBtn = document.getElementById('closeTaskModalBtn');
-    const closeProjectModalBtn = document.getElementById('closeProjectModalBtn');
-    const closeRegistrationModalBtn = document.getElementById('closeRegistrationModalBtn');
-    const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
-    const cancelTaskBtn = document.getElementById('cancelTaskBtn');
-    const cancelProjectBtn = document.getElementById('cancelProjectBtn');
-    const cancelRegistrationBtn = document.getElementById('cancelRegistrationBtn');
-    const cancelLoginBtn = document.getElementById('cancelLoginBtn');
-    const addTaskButtons = document.querySelectorAll('.add-task-btn');
-
-    let draggedTask = null;
-
-    function initBoard() {
-        fetchTasks();
-    }
-
-    async function fetchTasks() {
-        const token = localStorage.getItem('access_token');
-        if (!token) return;
-        try {
-            const response = await fetch('http://127.0.0.1:8000/tasks/', {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const tasksData = await response.json();
-                tasksData.forEach(task => addTaskToBoard(task));
-            }
-        } catch (error) {
-            console.error("Ошибка получения задач:", error);
-        }
-    }
-
-    function addTaskToBoard(task) {
-        const columnId = `${task.status}-tasks`;
-        const column = document.getElementById(columnId);
-        if (!column) return;
-        const taskElement = createTaskElement(task);
-        column.appendChild(taskElement);
-        updateTaskCount(task.status);
-    }
-
-    function createTaskElement(task) {
-        const priorityClasses = {
-            high: 'priority-high',
-            medium: 'priority-medium',
-            low: 'priority-low'
-        };
-
-        const taskElement = document.createElement('div');
-        taskElement.className = `task-card bg-white rounded-lg shadow p-4 ${priorityClasses[task.priority]}`;
-        taskElement.setAttribute('draggable', 'true');
-        taskElement.dataset.taskId = task.id;
-        taskElement.innerHTML = `
-            <div class="flex justify-between items-start mb-2">
-                <h4 class="font-medium text-gray-800">${task.title}</h4>
-                <div class="flex space-x-2">
-                    <button class="text-red-500 hover:text-red-700 delete-task-btn" data-task-id="${task.id}">
-                        <i class="fas fa-trash"></i>
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl w-full max-w-md mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Новая задача</h3>
+                    <!-- Кнопка закрытия (крестик) -->
+                    <button type="button" id="closeModalBtn" class="text-gray-500 hover:text-gray-700">
+                      <i class="fas fa-times"></i>
                     </button>
                 </div>
+                <form id="taskForm">
+                    <div class="mb-4">
+                        <label for="taskTitle" class="block text-sm font-medium text-gray-700 mb-1">Название задачи</label>
+                        <input type="text" id="taskTitle" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="taskDescription" class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                        <textarea id="taskDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="taskPriority" class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+                            <select id="taskPriority" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="low">Низкий</option>
+                                <option value="medium">Средний</option>
+                                <option value="high">Высокий</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                          <label for="taskStatus" class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+                          <select id="taskStatus" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="backlog">Бэклог</option>
+                            <option value="todo">В ожидании</option>
+                            <option value="inprogress">В работе</option>
+                            <option value="done">Завершено</option>
+                          </select>
+                        </div>
+                        <div>
+                            <label for="taskDueDate" class="block text-sm font-medium text-gray-700 mb-1">Срок</label>
+                            <input type="date" id="taskDueDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Участники</label>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="user3" data-user-id="3" class="hidden peer">
+                                <label for="user3" class="flex items-center cursor-pointer">
+                                    <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="User" class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="user4" data-user-id="4" class="hidden peer">
+                                <label for="user4" class="flex items-center cursor-pointer">
+                                    <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="User" class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Кнопки внизу формы -->
+                    <div class="flex justify-end space-x-3">
+                      <button type="button" id="cancelTaskBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800">Отмена</button>
+                      <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Сохранить</button>
+                    </div>
+                </form>
             </div>
-            <p class="text-sm text-gray-600 mb-3">${task.description || ''}</p>
-            <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                    <span class="text-xs text-gray-500">${task.assignee || 'Не назначен'}</span>
-                </div>
-                <span class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">${task.due_date || ''}</span>
-            </div>
-        `;
-        taskElement.addEventListener('dragstart', dragStart);
-        taskElement.addEventListener('dragend', dragEnd);
-        return taskElement;
-    }
+        </div>
+    </div>
 
-    function updateTaskCount(status) {
-        const column = document.querySelector(`.kanban-column[data-status="${status}"]`);
-        if (!column) return;
-        const countElement = column.querySelector('span');
-        const count = document.getElementById(`${status}-tasks`).children.length;
-        if (countElement) {
-            countElement.textContent = `${count} ${getTaskWord(count)}`
+    <!-- Edit Task Modal -->
+    <div id="editTaskModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl w-full max-w-md mx-4">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">Редактировать задачу</h3>
+            <!-- Кнопка закрытия (крестик) -->
+            <button type="button" id="closeEditTaskModalBtn" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <form id="editTaskForm">
+            <input type="hidden" id="editTaskId">
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Название</label>
+              <input type="text" id="editTaskTitle" class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+              <textarea id="editTaskDescription" class="w-full px-3 py-2 border rounded-md"></textarea>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Приоритет</label>
+              <select id="editTaskPriority" class="w-full px-3 py-2 border rounded-md">
+                <option value="low">Низкий</option>
+                <option value="medium">Средний</option>
+                <option value="high">Высокий</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+              <select id="editTaskStatus" class="w-full px-3 py-2 border rounded-md">
+                <option value="backlog">Бэклог</option>
+                <option value="todo">В ожидании</option>
+                <option value="inprogress">В работе</option>
+                <option value="done">Завершено</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label for="editTaskDueDate" class="block text-sm font-medium text-gray-700 mb-1">Срок</label>
+              <input type="date" id="editTaskDueDate" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Участники</label>
+              <div class="flex flex-wrap gap-2">
+                <div class="flex items-center">
+                  <input type="checkbox" id="user1-edit" data-user-id="1" class="hidden peer">
+                  <label for="user1-edit" class="flex items-center cursor-pointer">
+                    <img src="https://randomuser.me/api/portraits/women/44.jpg"
+                        class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                  </label>
+                </div>
+                <div class="flex items-center">
+                  <input type="checkbox" id="user2-edit" data-user-id="2" class="hidden peer">
+                  <label for="user2-edit" class="flex items-center cursor-pointer">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg"
+                        class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                  </label>
+                </div>
+              </div>
+            </div>
+            <!-- Кнопки внизу формы -->
+            <div class="flex justify-end space-x-3">
+              <button type="button" id="cancelEditTaskBtn" class="text-gray-600">Отмена</button>
+              <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Modal -->
+    <div id="projectModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl w-full max-w-md mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Новый проект</h3>
+                    <button id="closeProjectModalBtn" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="projectForm">
+                    <div class="mb-4">
+                        <label for="projectName" class="block text-sm font-medium text-gray-700 mb-1">Название проекта</label>
+                        <input type="text" id="projectName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="projectDescription" class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                        <textarea id="projectDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="projectStartDate" class="block text-sm font-medium text-gray-700 mb-1">Дата начала</label>
+                            <input type="date" id="projectStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label for="projectEndDate" class="block text-sm font-medium text-gray-700 mb-1">Дата окончания</label>
+                            <input type="date" id="projectEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Команда</label>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="flex items-center">
+                                <input type="checkbox" id="teamUser1" class="hidden peer" checked>
+                                <label for="teamUser1" class="flex items-center cursor-pointer">
+                                    <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                                    <span class="ml-2 text-sm">Анна</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="teamUser2" class="hidden peer" checked>
+                                <label for="teamUser2" class="flex items-center cursor-pointer">
+                                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                                    <span class="ml-2 text-sm">Иван</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="teamUser3" class="hidden peer">
+                                <label for="teamUser3" class="flex items-center cursor-pointer">
+                                    <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="User" class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                                    <span class="ml-2 text-sm">Петр</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="teamUser4" class="hidden peer">
+                                <label for="teamUser4" class="flex items-center cursor-pointer">
+                                    <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="User" class="w-8 h-8 rounded-full peer-checked:ring-2 peer-checked:ring-indigo-500">
+                                    <span class="ml-2 text-sm">Мария</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="cancelProjectBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800">Отмена</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Создать проект</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Project Modal -->
+    <div id="editProjectModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl w-full max-w-md mx-4">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">Редактировать проект</h3>
+            <button id="closeEditProjectModalBtn" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <form id="editProjectForm">
+            <input type="hidden" id="editProjectId">
+            <div class="mb-4">
+              <label for="editProjectName" class="block text-sm font-medium text-gray-700 mb-1">Название проекта</label>
+              <input type="text" id="editProjectName" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+            </div>
+            <div class="mb-4">
+              <label for="editProjectDescription" class="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+              <textarea id="editProjectDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label for="editProjectStartDate" class="block text-sm font-medium text-gray-700 mb-1">Дата начала</label>
+                <input type="date" id="editProjectStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+              </div>
+              <div>
+                <label for="editProjectEndDate" class="block text-sm font-medium text-gray-700 mb-1">Дата окончания</label>
+                <input type="date" id="editProjectEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+              </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+              <button type="button" id="cancelEditProjectBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800">Отмена</button>
+              <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Сохранить</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl w-full max-w-md mx-4 p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold text-gray-800">Вход</h3>
+          <button id="closeLoginModalBtn" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="loginForm">
+          <div class="mb-4">
+            <label class="block mb-1 text-sm font-medium text-gray-700">Имя пользователя</label>
+            <input type="text" id="loginUsername" class="w-full border px-3 py-2 rounded-md" required>
+          </div>
+          <div class="mb-4">
+            <label class="block mb-1 text-sm font-medium text-gray-700">Пароль</label>
+            <input type="password" id="loginPassword" class="w-full border px-3 py-2 rounded-md" required>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button type="button" id="cancelLoginBtn" class="px-4 py-2 text-gray-600">Отмена</button>
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Войти</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registrationModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl w-full max-w-md mx-4 p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold text-gray-800">Регистрация</h3>
+          <button id="closeRegisterModalBtn" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="registrationForm">
+          <div class="mb-4">
+            <label class="block mb-1 text-sm font-medium text-gray-700">Имя пользователя</label>
+            <input type="text" id="registerUsername" class="w-full border px-3 py-2 rounded-md" required>
+          </div>
+          <div class="mb-4">
+            <label class="block mb-1 text-sm font-medium text-gray-700">Пароль</label>
+            <input type="password" id="registerPassword" class="w-full border px-3 py-2 rounded-md" required>
+          </div>
+          <div class="flex justify-end space-x-3">
+            <button type="button" id="cancelRegisterBtn" class="px-4 py-2 text-gray-600">Отмена</button>
+            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Зарегистрироваться</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  let draggedTask = null;
+    loadProfile();
+    loadProjects();
+    loadTasks();
+    // Загрузка профиля
+    async function loadProfile() {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            document.getElementById("welcomeSection")?.classList.remove("hidden");
+            return;
+        }
+
+        try {
+            const res = await fetch("/me", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (res.status === 401) {
+              localStorage.removeItem("access_token");
+              location.reload();
+              return;
+            }
+
+            if (res.ok) {
+                const user = await res.json();
+                const avatar = document.getElementById("userAvatar");
+                avatar.textContent = user.username.charAt(0).toUpperCase();
+                avatar.style.backgroundColor = user.avatar_color || getRandomColor();
+
+                document.getElementById("authButtons").classList.add("hidden");
+                document.getElementById("avatarBlock").classList.remove("hidden");
+                document.getElementById("newProjectBlock").classList.remove("hidden");
+            }
+        } catch (error) {
+            console.error("Ошибка при загрузке профиля:", error);
         }
     }
 
-    function getTaskWord(count) {
-        if (count % 10 === 1 && count % 100 !== 11) return 'задача';
-        else if ([2, 3, 4].includes(count % 10)) return 'задачи';
-        else return 'задач';
+    function getRandomColor() {
+        const colors = ["#F59E0B", "#10B981", "#6366F1", "#EF4444", "#3B82F6", "#8B5CF6"];
+        return colors[Math.floor(Math.random() * colors.length)];
     }
 
-    function dragStart(e) {
-        draggedTask = this;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
-        setTimeout(() => this.style.opacity = '0.4', 0);
+    // Модалки
+    function openModal(modal) {
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
     }
 
-    function dragEnd() {
-        this.style.opacity = '1';
+    function closeModal(modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "auto";
     }
 
-    function dragOver(e) {
+    // Открытие модалки "Новый проект"
+    const newProjectBtn = document.getElementById("newProjectBtn");
+    const projectModal = document.getElementById("projectModal");
+    const closeProjectModalBtn = document.getElementById("closeProjectModalBtn");
+    const cancelProjectBtn = document.getElementById("cancelProjectBtn");
+
+    newProjectBtn?.addEventListener("click", () => openModal(projectModal));
+    closeProjectModalBtn?.addEventListener("click", () => closeModal(projectModal));
+    cancelProjectBtn?.addEventListener("click", () => closeModal(projectModal));
+
+    const projectForm = document.getElementById("projectForm");
+
+        projectForm?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const name = document.getElementById("projectName").value;
+          const description = document.getElementById("projectDescription").value;
+          const startDate = document.getElementById("projectStartDate").value;
+          const endDate = document.getElementById("projectEndDate").value;
+
+          const token = localStorage.getItem("access_token");
+
+          if (!token) {
+              alert("Вы не авторизованы");
+              return;
+          }
+
+          const payload = {
+              name,
+              description,
+              start_date: startDate,
+              end_date: endDate
+          };
+
+          const res = await fetch(`/projects/?t=${Date.now()}`, {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${token}`
+              },
+              body: JSON.stringify(payload)
+          });
+
+          if (res.ok) {
+              const newProject = await res.json();
+        
+              loadProjects();
+
+              closeModal(projectModal);
+              projectForm.reset();
+          } else {
+              const err = await res.json();
+              alert("Ошибка создания проекта: " + err.detail);
+          }
+      });
+
+        // Обработчики для редактирования проекта
+        const editProjectModal = document.getElementById("editProjectModal");
+        const closeEditProjectModalBtn = document.getElementById("closeEditProjectModalBtn");
+        const cancelEditProjectBtn = document.getElementById("cancelEditProjectBtn");
+        const editProjectForm = document.getElementById("editProjectForm");
+
+        closeEditProjectModalBtn?.addEventListener("click", () => closeModal(editProjectModal));
+        cancelEditProjectBtn?.addEventListener("click", () => closeModal(editProjectModal));
+
+        editProjectForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById("editProjectId").value;
+            const name = document.getElementById("editProjectName").value;
+            const description = document.getElementById("editProjectDescription").value;
+            const startDate = document.getElementById("editProjectStartDate").value;
+            const endDate = document.getElementById("editProjectEndDate").value;
+
+            const res = await fetch(`/projects/${id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+                },
+                body: JSON.stringify({ name, description, start_date: startDate, end_date: endDate })
+            });
+
+            if (res.ok) {
+                closeModal(editProjectModal);
+                loadProjects(); // перерисовать список
+            } else {
+                alert("Ошибка при обновлении проекта");
+            }
+        });
+
+        // Обработчик формы задачи
+        const taskForm = document.getElementById("taskForm");
+        const taskModal = document.getElementById("taskModal");
+        const cancelTaskBtn = document.getElementById("cancelTaskBtn");
+        const closeModalBtn = document.getElementById("closeModalBtn");
+
+        document.querySelectorAll(".add-task-btn").forEach(button => {
+            button.addEventListener("click", (e) => {
+
+                const column = e.target.closest(".kanban-column");
+                const statusZone = column?.querySelector(".dropzone");
+                const defaultStatus = statusZone?.dataset.status || "backlog";
+
+                document.getElementById("taskStatus").value = defaultStatus;
+                openModal(taskModal);
+            });
+        });
+
+        closeModalBtn?.addEventListener("click", () => closeModal(taskModal));
+        closeModalBtn?.addEventListener("click", () => {
+          taskForm.reset();
+          closeModal(taskModal);
+        });
+        cancelTaskBtn?.addEventListener("click", () => closeModal(taskModal));
+        cancelTaskBtn?.addEventListener("click", () => {
+          taskForm.reset();
+          closeModal(taskModal);
+        });
+
+        if (taskForm) {
+          taskForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const rawTitle = document.getElementById("taskTitle").value.trim();
+            const rawDescription = document.getElementById("taskDescription").value.trim();
+            const priority = document.getElementById("taskPriority").value;
+            const due_date = document.getElementById("taskDueDate").value || new Date().toISOString().split("T")[0];
+            const status = document.getElementById("taskStatus").value || "backlog";
+
+            if (!rawTitle || !rawDescription) {
+              alert("Заполните название и описание задачи.");
+              return;
+            }
+
+            const projectId = document.getElementById("taskModal").dataset.projectId;
+
+            const payload = {
+              title: rawTitle,
+              description: rawDescription,
+              priority,
+              due_date,
+              status,
+              project_id: Number(projectId)
+            };
+
+            const res = await fetch("/tasks/", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+              },
+              body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+              const newTask = await res.json();
+              addTaskToBoard(newTask, newTask.project_id);
+              updateTaskCounts();
+              closeModal(taskModal);
+              taskModal.dataset.projectId = "";
+              taskForm.reset();
+            } else {
+              const err = await res.json();
+              alert("Ошибка при создании задачи:\n" + (
+                Array.isArray(err.detail)
+                  ? err.detail.map(d => d.msg).join(", ")
+                  : err.detail || "Неизвестная ошибка"
+              ));
+            }
+          });
+        }
+
+    // Вход
+    const loginBtn = document.getElementById("loginBtn");
+    const loginModal = document.getElementById("loginModal");
+    const loginForm = document.getElementById("loginForm");
+    const cancelLoginBtn = document.getElementById("cancelLoginBtn");
+
+    loginBtn?.addEventListener("click", () => openModal(loginModal));
+    cancelLoginBtn?.addEventListener("click", () => closeModal(loginModal));
+
+    const closeLoginModalBtn = document.getElementById("closeLoginModalBtn");
+    closeLoginModalBtn?.addEventListener("click", () => closeModal(loginModal));
+
+    loginForm?.addEventListener("submit", async (e) => {
         e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        this.classList.add('active');
-    }
+        const username = document.getElementById("loginUsername").value;
+        const password = document.getElementById("loginPassword").value;
 
-    function dragEnter(e) {
+        const res = await fetch("/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ username, password })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem("access_token", data.access_token);
+            closeModal(loginModal);
+            loginForm.reset();
+            location.reload();
+        } else {
+            const err = await res.json();
+            alert("Ошибка входа: " + err.detail);
+        }
+    });
+
+    // Регистрация
+    const registerBtn = document.getElementById("registerBtn");
+    const registrationModal = document.getElementById("registrationModal");
+    const registrationForm = document.getElementById("registrationForm");
+    const cancelRegisterBtn = document.getElementById("cancelRegisterBtn");
+
+    registerBtn?.addEventListener("click", () => openModal(registrationModal));
+    cancelRegisterBtn?.addEventListener("click", () => closeModal(registrationModal));
+
+    const closeRegisterModalBtn = document.getElementById("closeRegisterModalBtn");
+    closeRegisterModalBtn?.addEventListener("click", () => closeModal(registrationModal));
+
+    registrationForm?.addEventListener("submit", async (e) => {
         e.preventDefault();
-    }
+        const username = document.getElementById("registerUsername").value;
+        const password = document.getElementById("registerPassword").value;
 
-    function dragLeave() {
-        this.classList.remove('active');
-    }
+        const res = await fetch("/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
 
-    async function drop(e) {
-        e.preventDefault();
-        this.classList.remove('active');
-        if (draggedTask) {
-            const newStatus = this.dataset.status;
-            const taskId = parseInt(draggedTask.dataset.taskId);
-            const token = localStorage.getItem('access_token');
-            if (!token) return;
+        if (res.ok) {
+            alert("Регистрация прошла успешно. Теперь войдите.");
+            closeModal(registrationModal);
+            registrationForm.reset();
+        } else {
+            const err = await res.json();
+            alert("Ошибка регистрации: " + err.detail);
+        }
+    });
 
-            try {
-                const response = await fetch(`http://127.0.0.1:8000/tasks/${taskId}`, {
-                    method: 'PUT',
+    // Выпадающее меню по клику на аватар
+    const avatar = document.getElementById("userAvatar");
+    const dropdown = document.getElementById("avatarDropdown");
+
+    avatar?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle("hidden");
+        
+        const hint = document.getElementById("onboardingHint");
+
+        // Если меню ОТКРЫТО → скрыть гид
+        if (!dropdown.classList.contains("hidden")) {
+          hint?.classList.add("hidden");
+        } else {
+          // Если меню ЗАКРЫТО и пользователь НЕ создал проектов → показать гид
+          checkShouldShowOnboardingHint();
+        }
+      });
+
+    document.addEventListener("click", (e) => {
+        if (!avatar.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add("hidden");
+            checkShouldShowOnboardingHint();
+        }
+    });
+
+    document.getElementById("projectList").addEventListener("click", (e) => {
+      const button = e.target.closest(".add-task-btn");
+      if (!button) return;
+
+      const column = button.closest(".kanban-column");
+      const zone = column.querySelector(".dropzone");
+      const defaultStatus = zone.dataset.status;
+      const projectId = zone.dataset.projectId;
+
+      document.getElementById("taskStatus").value = defaultStatus;
+      document.getElementById("taskModal").dataset.projectId = projectId;
+      openModal(document.getElementById("taskModal"));
+    });
+
+    // Подтверждение выхода
+    document.getElementById("logoutBtn")?.addEventListener("click", () => {
+        if (confirm("Вы действительно хотите выйти?")) {
+            localStorage.removeItem("access_token");
+            location.reload();
+        }
+    });
+
+    // Заглушки для Профиля и Настроек
+    document.getElementById("profileBtn")?.addEventListener("click", () => {
+        alert("Раздел 'Профиль' пока не реализован.");
+    });
+    document.getElementById("settingsBtn")?.addEventListener("click", () => {
+        alert("Раздел 'Настройки' пока не реализован.");
+    });
+
+        document.addEventListener("click", async (e) => {
+        // Удаление проекта
+        if (e.target.classList.contains("deleteProjectBtn")) {
+            const id = e.target.dataset.id;
+            if (confirm("Удалить проект?")) {
+                const res = await fetch(`/projects/${id}`, {
+                    method: "DELETE",
                     headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status: newStatus })
+                        Authorization: `Bearer ${localStorage.getItem("access_token")}`
+                    }
                 });
-
-                if (response.ok) {
-                    const oldStatus = draggedTask.closest('.kanban-column').dataset.status;
-                    document.getElementById(`${newStatus}-tasks`).appendChild(draggedTask);
-                    updateTaskCount(oldStatus);
-                    updateTaskCount(newStatus);
+                if (res.ok) {
+                    loadProjects();
+                } else {
+                    alert("Ошибка при удалении проекта");
                 }
-            } catch (error) {
-                console.error("Ошибка обновления задачи:", error);
             }
         }
-    }
 
-    function openTaskModal(status = 'todo') {
-        document.getElementById('taskStatus').value = status;
-        taskModal.classList.remove('hidden');
-    }
+        // Редактирование проекта
+        if (e.target.classList.contains("editProjectBtn")) {
+            const id = e.target.dataset.id;
 
-    function closeTaskModal() {
-        taskModal.classList.add('hidden');
-        document.getElementById('taskForm').reset();
-    }
+            // Получим данные проекта
+            const res = await fetch(`/projects/${id}`, {
+                headers: {
+                    "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+                }
+            });
 
-    function openProjectModal() {
-        projectModal.classList.remove('hidden');
-    }
+            if (res.ok) {
+                const project = await res.json();
+                // Заполни форму редактирования
+                document.getElementById("editProjectId").value = project.id;
+                document.getElementById("editProjectName").value = project.name;
+                document.getElementById("editProjectDescription").value = project.description;
+                document.getElementById("editProjectStartDate").value = project.start_date;
+                document.getElementById("editProjectEndDate").value = project.end_date;
 
-    function closeProjectModal() {
-        projectModal.classList.add('hidden');
-        document.getElementById('projectForm').reset();
-    }
+                // Открой модалку
+                openModal(editProjectModal);
+            } else {
+                alert("Не удалось загрузить данные проекта");
+            }
+        }
+        // Обработка меню задач по кнопке ⋮
+        if (e.target.closest(".task-options-btn")) {
+          const card = e.target.closest(".task-card");
+          const menu = card.querySelector(".task-dropdown-menu");
 
-    function openRegistrationModal() {
-        registrationModal.classList.remove('hidden');
-    }
+          document.querySelectorAll(".task-dropdown-menu").forEach(m => {
+            if (m !== menu) m.classList.add("hidden");
+          });
 
-    function closeRegistrationModal() {
-        registrationModal.classList.add('hidden');
-        document.getElementById('registrationForm').reset();
-    }
+          menu.classList.toggle("hidden");
+          e.stopPropagation();
+        }
 
-    function openLoginModal() {
-        loginModal.classList.remove('hidden');
-    }
+        // Закрытие меню задач при клике вне карточки
+        if (!e.target.closest(".task-card")) {
+          document.querySelectorAll(".task-dropdown-menu").forEach(m => m.classList.add("hidden"));
+        }
 
-    function closeLoginModal() {
-        loginModal.classList.add('hidden');
-        document.getElementById('loginForm').reset();
-    }
+        // Удаление задачи
+        if (e.target.classList.contains("task-delete-trigger")) {
+          const card = e.target.closest(".task-card");
+          const id = card.dataset.taskId;
 
-    // Event Listeners
-    newProjectBtn.addEventListener('click', openProjectModal);
+          if (confirm("Удалить задачу?")) {
+            const res = await fetch(`/tasks/${id}`, {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("access_token")}`
+              }
+            });
 
-    closeModalBtn.addEventListener('click', closeTaskModal);
-    closeProjectModalBtn.addEventListener('click', closeProjectModal);
-    closeRegistrationModalBtn.addEventListener('click', closeRegistrationModal);
-    closeLoginModalBtn.addEventListener('click', closeLoginModal);
+            if (res.ok) {
+              card.remove();
+              updateTaskCounts();
+            } else {
+              alert("Ошибка при удалении задачи");
+            }
+          }
+        }
 
-    cancelTaskBtn.addEventListener('click', closeTaskModal);
-    cancelProjectBtn.addEventListener('click', closeProjectModal);
-    cancelRegistrationBtn.addEventListener('click', closeRegistrationModal);
-    cancelLoginBtn.addEventListener('click', closeLoginModal);
+        // Редактирование задачи
+        if (e.target.classList.contains("task-edit-trigger")) {
+          const card = e.target.closest(".task-card");
+          const id = card.dataset.taskId;
 
-    addTaskButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const column = button.closest('.kanban-column');
-            const status = column.dataset.status;
-            openTaskModal(status);
+          const res = await fetch(`/tasks/${id}`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`
+            }
+          });
+
+          if (res.ok) {
+            const task = await res.json();
+            // Отметим исполнителя, если он есть
+            document.querySelectorAll("#editTaskModal input[type='checkbox']").forEach(cb => cb.checked = false);
+            if (task.assignee) {
+              const checkbox = document.querySelector(`#editTaskModal input[data-user-id="${task.assignee}"]`);
+              if (checkbox) checkbox.checked = true;
+            }
+            document.getElementById("editTaskDueDate").value = task.due_date;
+            document.getElementById("editTaskId").value = task.id;
+            document.getElementById("editTaskTitle").value = task.title;
+            document.getElementById("editTaskDescription").value = task.description;
+            document.getElementById("editTaskPriority").value = task.priority;
+            document.getElementById("editTaskStatus").value = task.status;
+            openModal(document.getElementById("editTaskModal"));
+          } else {
+            alert("Не удалось загрузить задачу");
+          }
+        }
+
+        document.getElementById("closeEditTaskModalBtn")?.addEventListener("click", () =>
+          closeModal(document.getElementById("editTaskModal"))
+        );
+        document.getElementById("cancelEditTaskBtn")?.addEventListener("click", () =>
+          closeModal(document.getElementById("editTaskModal"))
+        );
+
+        // Обработчик формы редактирования задачи
+        const editTaskForm = document.getElementById("editTaskForm");
+        editTaskForm?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const id = document.getElementById("editTaskId").value;
+          const title = document.getElementById("editTaskTitle").value;
+          const description = document.getElementById("editTaskDescription").value;
+          const priority = document.getElementById("editTaskPriority").value;
+          const status = document.getElementById("editTaskStatus").value;
+
+          // Получаем срок и исполнителя
+          const due_date = document.getElementById("editTaskDueDate").value || new Date().toISOString().split("T")[0];
+
+          let assignee = null;
+          document.querySelectorAll("#editTaskModal input[type='checkbox']").forEach(cb => {
+            if (cb.checked) {
+              assignee = cb.dataset.userId;
+            }
+          });
+
+          const payload = {
+            title,
+            description,
+            priority,
+            status,
+            due_date,
+            assignee
+          };
+
+          const res = await fetch(`/tasks/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (res.ok) {
+            closeModal(document.getElementById("editTaskModal"));
+            loadTasks(); // обновим задачи
+          } else {
+            const err = await res.json();
+            alert("Ошибка при редактировании задачи: " + (err.detail || "422 Unprocessable Entity"));
+          }
         });
     });
+});
 
-    window.addEventListener('click', function (e) {
-        if (e.target === taskModal) closeTaskModal();
-        if (e.target === projectModal) closeProjectModal();
-        if (e.target === registrationModal) closeRegistrationModal();
-        if (e.target === loginModal) closeLoginModal();
+async function loadProjects() {
+  console.log("Загружаем проекты...");
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
+
+  try {
+    const res = await fetch("/projects/", {
+      headers: { Authorization: `Bearer ${token}` }
     });
 
-    // Handle task creation
-    document.getElementById('taskForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-            alert('Вы не авторизованы!');
-            return;
+    if (res.ok) {
+      const projects = await res.json();
+      // Показываем гайд, если проектов нет
+      const onboardingHint = document.getElementById("onboardingHint");
+
+      if (projects.length === 0) {
+        onboardingHint?.classList.remove("hidden");
+      } else {
+        onboardingHint?.classList.add("hidden");
+      }
+      console.log("Проекты загружены:", projects);
+      const container = document.querySelector("#projectList");
+      container.innerHTML = ""; // очищаем перед отрисовкой
+
+      projects.forEach(project => {
+        addProjectToBoard(project);
+      });
+      initializeDragAndDrop();
+    } else {
+      console.error("Ошибка загрузки проектов");
+    }
+  } catch (error) {
+    console.error("Ошибка при получении проектов:", error);
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("ru-RU", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+}
+
+function addProjectToBoard(project) {
+  const container = document.querySelector("#projectList");
+
+  const projectCard = document.createElement("div");
+  projectCard.className = "bg-white rounded-xl shadow-md p-6 mb-6";
+
+  const startDateFormatted = formatDate(project.start_date);
+  const endDateFormatted = formatDate(project.end_date);
+
+  projectCard.innerHTML = `
+    <div class="flex justify-between items-start flex-col md:flex-row gap-4 mb-4">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-800">${project.name}</h2>
+        <p class="text-gray-600 mt-2">${project.description}</p>
+      </div>
+      <div class="flex flex-col md:items-end text-sm space-y-2">
+        <div class="flex gap-6">
+          <div class="flex flex-col items-center text-center">
+            <p class="text-gray-500">Срок</p>
+            <p class="font-semibold">${startDateFormatted} – ${endDateFormatted}</p>
+          </div>
+          <div class="flex flex-col items-center text-center">
+            <p class="text-gray-500">Прогресс</p>
+            <div class="w-32 bg-gray-200 rounded-full h-2.5">
+              <div class="bg-indigo-600 h-2.5 rounded-full" style="width: ${project.progress || 0}%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2 self-end">
+          <button data-id="${project.id}" class="editProjectBtn bg-yellow-100 text-yellow-800 px-3 py-1 rounded-md hover:bg-yellow-200 text-sm">✏️ Редактировать</button>
+          <button data-id="${project.id}" class="deleteProjectBtn bg-red-100 text-red-800 px-3 py-1 rounded-md hover:bg-red-200 text-sm">🗑️ Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-project-id="${project.id}">
+      ${["backlog", "todo", "inprogress", "done"].map(status => `
+        <div class="kanban-column bg-gray-100 rounded-xl p-4">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-lg text-gray-700">${translateStatus(status)}</h3>
+            <span class="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium" id="${status}Count-${project.id}">0 задач</span>
+          </div>
+          <div class="dropzone" data-status="${status}" data-project-id="${project.id}"></div>
+          <button class="add-task-btn w-full mt-2 py-2 text-gray-500 hover:text-indigo-600 rounded-lg hover:bg-gray-200 transition flex items-center justify-center">
+            <i class="fas fa-plus mr-2"></i> Добавить задачу
+          </button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  container.appendChild(projectCard);
+
+  fetch(`/projects/${project.id}/tasks`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token")}`
+    }
+  })
+    .then(res => res.json())
+    .then(tasks => {
+      tasks.forEach(task => addTaskToBoard(task, project.id));
+      updateTaskCounts(project.id);
+    })
+    .catch(err => console.error("Ошибка загрузки задач проекта:", err));
+}
+
+async function loadTasks() {
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
+
+  document.querySelectorAll(".dropzone").forEach(zone => zone.innerHTML = "");
+
+  try {
+    const res = await fetch("/tasks/", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (res.ok) {
+      const tasks = await res.json();
+      tasks.forEach(task => addTaskToBoard(task));
+      updateTaskCounts();
+      initializeDragAndDrop();
+    } else {
+      console.error("Ошибка загрузки задач");
+    }
+  } catch (error) {
+    console.error("Ошибка при получении задач:", error);
+  }
+}
+
+function addTaskToBoard(task, projectId) {
+  const zone = document.querySelector(`.dropzone[data-status="${task.status}"][data-project-id="${projectId}"]`);
+  if (!zone) return;
+
+  const card = document.createElement("div");
+  card.className = `task-card bg-white rounded-lg shadow p-4 mb-4 status-${task.status}`;
+  card.setAttribute("draggable", true);
+  card.setAttribute("data-task-id", task.id);
+  card.setAttribute("data-priority", task.priority);
+
+  card.innerHTML = `
+    <div class="flex justify-between items-start">
+      <h4 class="font-medium text-gray-800">${task.title}</h4>
+      <span class="text-xs px-2 py-1 rounded ${getPriorityClass(task.priority)}">${translateStatus(task.status)}</span>
+    </div>
+    <p class="text-sm text-gray-500 mt-2">${task.description}</p>
+    <div class="flex items-center mt-4 text-sm text-gray-500">
+      <i class="far fa-calendar-alt mr-2"></i>
+      <span>До ${task.due_date}</span>
+    </div>
+  `;
+
+  card.addEventListener("dragstart", () => {
+  draggedTask = card;
+  card.style.opacity = "0.5";
+});
+
+card.addEventListener("dragend", () => {
+  card.style.opacity = "1";
+  draggedTask = null;
+});
+
+  zone.appendChild(card);
+}
+
+function initializeDragAndDrop() {
+  document.querySelectorAll(".dropzone").forEach(zone => {
+    zone.addEventListener("dragover", e => {
+      e.preventDefault();
+      zone.classList.add("dragover");
+    });
+
+    zone.addEventListener("dragleave", () => {
+      zone.classList.remove("dragover");
+    });
+
+    zone.addEventListener("drop", async e => {
+      e.preventDefault();
+      zone.classList.remove("dragover");
+
+      if (draggedTask) {
+        const newStatus = zone.dataset.status;
+        const taskId = draggedTask.dataset.taskId;
+
+        draggedTask.classList.remove("status-backlog", "status-todo", "status-inprogress", "status-done");
+        draggedTask.classList.add(`status-${newStatus}`);
+
+        const label = draggedTask.querySelector("span");
+
+        if (newStatus === "backlog") {
+          const originalPriority = draggedTask.dataset.priority || "medium";
+          label.textContent = translatePriority(originalPriority);
+          label.className = `text-xs px-2 py-1 rounded ${getPriorityClass(originalPriority)}`;
+        } else {
+          label.textContent = translateStatus(newStatus);
         }
 
-        const newTaskData = {
-            title: document.getElementById('taskTitle').value,
-            description: document.getElementById('taskDescription').value,
-            priority: document.getElementById('taskPriority').value,
-            assignee: document.getElementById('taskAssignee').value.trim(),
-            due_date: document.getElementById('taskDueDate').value,
-            status: document.getElementById('taskStatus').value
-        };
+        zone.appendChild(draggedTask);
+        updateTaskCounts(zone.dataset.projectId);
 
-        try {
-            const response = await fetch('http://127.0.0.1:8000/tasks/', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(newTaskData)
-            });
-
-            if (response.ok) {
-                const createdTask = await response.json();
-                addTaskToBoard(createdTask);
-                closeTaskModal();
-            } else {
-                alert('Не удалось создать задачу.');
-            }
-        } catch (error) {
-            console.error("Ошибка при создании задачи:", error);
-        }
+        await fetch(`/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+      }
     });
+  });
+}
 
-    // Handle project creation
-    document.getElementById('projectForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        const projectName = document.getElementById('projectName').value.trim();
-        if (!projectName) {
-            alert("Введите название проекта");
-            return;
-        }
+function declineWord(number, one, few, many) {
+  number = Math.abs(number) % 100;
+  const n1 = number % 10;
 
-        alert(`Проект "${projectName}" создан!`);
-        closeProjectModal();
+  if (number > 10 && number < 20) return many;
+  if (n1 > 1 && n1 < 5) return few;
+  if (n1 === 1) return one;
+
+  return many;
+}
+
+function updateTaskCounts(projectId = null) {
+  const statuses = ["backlog", "todo", "inprogress", "done"];
+
+  if (projectId) {
+    statuses.forEach(status => {
+      const zone = document.querySelector(`.dropzone[data-status="${status}"][data-project-id="${projectId}"]`);
+      const count = zone ? zone.querySelectorAll(".task-card").length : 0;
+
+      const countEl = document.getElementById(`${status}Count-${projectId}`);
+      if (countEl) {
+        countEl.textContent = `${count} ${declineWord(count, "задача", "задачи", "задач")}`;
+      }
     });
-
-    // Handle registration
-    document.getElementById('registrationForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        try {
-            const response = await fetch('http://127.0.0.1:8000/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-
-            if (response.ok) {
-                alert('Вы успешно зарегистрированы!');
-                closeRegistrationModal();
-            } else {
-                alert('Не удалось зарегистрироваться.');
-            }
-        } catch (error) {
-            console.error("Ошибка регистрации:", error);
-        }
+  } else {
+    // Обновить все проекты
+    document.querySelectorAll(".dropzone").forEach(zone => {
+      const status = zone.dataset.status;
+      const pid = zone.dataset.projectId;
+      const count = zone.querySelectorAll(".task-card").length;
+      const countEl = document.getElementById(`${status}Count-${pid}`);
+      if (countEl) {
+        countEl.textContent = `${count} ${declineWord(count, "задача", "задачи", "задач")}`;
+      }
     });
+  }
+}
 
-    // Handle login
-    document.getElementById('loginForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-        const username = document.getElementById('loginUsername').value;
-        const password = document.getElementById('loginPassword').value;
+function getPriorityClass(priority) {
+  return {
+    low: "bg-green-100 text-green-800",
+    medium: "bg-yellow-100 text-yellow-800",
+    high: "bg-red-100 text-red-800"
+  }[priority] || "bg-gray-100 text-gray-800";
+}
 
-        try {
-            const response = await fetch('http://127.0.0.1:8000/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    username,
-                    password
-                })
-            });
+function translatePriority(priority) {
+  return {
+    low: "Низкий",
+    medium: "Средний",
+    high: "Высокий"
+  }[priority] || priority;
+}
 
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('access_token', data.access_token);
-                alert('Вы вошли в систему!');
-                closeLoginModal();
-                initBoard();
-            } else {
-                alert('Неверное имя или пароль.');
-            }
-        } catch (error) {
-            console.error("Ошибка авторизации:", error);
-        }
+function translateStatus(status) {
+  return {
+    backlog: "Бэклог",
+    todo: "В ожидании",
+    inprogress: "В работе",
+    done: "Завершено"
+  }[status] || status;
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+let draggedTask = null;
+
+// Проверяет: если проектов нет — показываем гид
+function checkShouldShowOnboardingHint() {
+  const hint = document.getElementById("onboardingHint");
+
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
+
+  fetch("/projects/", {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+    .then(res => res.json())
+    .then(projects => {
+      if (projects.length === 0) {
+        hint?.classList.remove("hidden");
+      } else {
+        hint?.classList.add("hidden");
+      }
+    })
+    .catch(() => {
+      hint?.classList.add("hidden");
     });
+}
 
-    // Handle task deletion
-    document.addEventListener('click', async function (e) {
-        if (e.target && e.target.classList.contains('delete-task-btn')) {
-            const taskId = e.target.dataset.taskId;
-            if (!confirm('Удалить эту задачу?')) return;
-            const token = localStorage.getItem('access_token');
-            if (!token) return alert('Вы не авторизованы!');
-
-            try {
-                const response = await fetch(`http://127.0.0.1:8000/tasks/${taskId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (response.ok) {
-                    const taskEl = document.querySelector(`[data-task-id="${taskId}"]`);
-                    if (taskEl) {
-                        const column = taskEl.closest('.kanban-column');
-                        const status = column.dataset.status;
-                        taskEl.remove();
-                        updateTaskCount(status);
-                    }
-                } else {
-                    alert('Не удалось удалить задачу.');
-                }
-            } catch (error) {
-                console.error("Ошибка удаления задачи:", error);
-            }
-        }
-    });
-
-    // Drag and Drop
-    document.querySelectorAll('.kanban-column').forEach(column => {
-        column.addEventListener('dragover', dragOver);
-        column.addEventListener('dragenter', dragEnter);
-        column.addEventListener('dragleave', dragLeave);
-        column.addEventListener('drop', drop);
-    });
-
-    document.addEventListener('DOMContentLoaded', initBoard);
 </script>
+
 </body>
 </html>

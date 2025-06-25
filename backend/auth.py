@@ -12,7 +12,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[schemas.UserInDB]:
+def authenticate_user(db: Session, username: str, password: str):
     user = crud.get_user(db, username)
     if not user or not crud.verify_password(password, user.hashed_password):
         return None

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas
 from passlib.context import CryptContext
+import random
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -16,7 +17,12 @@ def get_user(db: Session, username: str) -> models.User:
 
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     hashed_password = get_password_hash(user.password)
-    db_user = models.User(username=user.username, hashed_password=hashed_password)
+    avatar_color = random_color()
+    db_user = models.User(
+        username=user.username,
+        hashed_password=hashed_password,
+        avatar_color=avatar_color
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -62,3 +68,6 @@ def delete_task(db: Session, task_id: int, user_id: int):
         raise ValueError("Task not found")
     db.delete(db_task)
     db.commit()
+
+def random_color():
+    return "#{:06x}".format(random.randint(0, 0xFFFFFF))

@@ -2,5 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 python-jose[cryptography]
-passlib
+passlib==1.7.4
 pydantic
+python-multipart
+bcrypt==3.2.2
